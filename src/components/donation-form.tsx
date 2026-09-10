@@ -7,6 +7,7 @@ import { Shield, CheckCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { translations } from "@/lib/translations";
 import { loadRazorpayScript } from "@/lib/razorpay-client";
+import { supabase } from "@/lib/supabase";
 
 const donationAmounts = [500, 1000, 2500, 5000];
 
@@ -120,6 +121,25 @@ export function DonationForm() {
 
             if (!verifyResponse.ok || !verifyData.success) {
               throw new Error(verifyData.error || t.paymentFailed);
+            }
+
+            try {
+              if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+                await supabase.from("donations").insert([
+                  {
+                    full_name: formData.name,
+                    email: formData.email,
+                    mobile_number: formData.phone,
+                    amount: amountInRupees,
+                    seva_category: formData.sevaCategory || "General",
+                    payment_id: response.razorpay_payment_id,
+                    order_id: response.razorpay_order_id,
+                    status: "success",
+                  },
+                ]);
+              }
+            } catch (supaErr) {
+              console.error("Supabase donation insert error:", supaErr);
             }
 
             setPaymentStatus("success");

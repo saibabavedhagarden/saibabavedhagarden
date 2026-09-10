@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, Clock, CheckCircle, Facebook, Instagram, Youtube } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 
+import { supabase } from "@/lib/supabase";
+
 export default function ContactPage() {
   const { language } = useLanguage();
   const t = translations[language].contact;
@@ -23,10 +25,25 @@ export default function ContactPage() {
   });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        await supabase.from("contact_submissions").insert([
+          {
+            full_name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            subject: formData.subject,
+            message: formData.message,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Supabase contact submit error:", err);
+    }
+
     setSubmitted(true);
-    // Reset form after showing success message
     setTimeout(() => {
       setSubmitted(false);
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
