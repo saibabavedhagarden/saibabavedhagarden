@@ -11,8 +11,10 @@ CREATE TABLE IF NOT EXISTS contact_submissions (
 
 -- Enable RLS & allow public form submission
 ALTER TABLE contact_submissions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public insert to contact_submissions" ON contact_submissions;
 CREATE POLICY "Allow public insert to contact_submissions" 
-ON contact_submissions FOR INSERT TO anon WITH CHECK (true);
+ON contact_submissions FOR INSERT 
+WITH CHECK (true);
 
 -- 2. Table for Donations ("Make a Donation")
 CREATE TABLE IF NOT EXISTS donations (
@@ -30,5 +32,7 @@ CREATE TABLE IF NOT EXISTS donations (
 
 -- Enable RLS & allow public form submission
 ALTER TABLE donations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public insert to donations" ON donations;
 CREATE POLICY "Allow public insert to donations" 
-ON donations FOR INSERT TO anon WITH CHECK (true);
+ON donations FOR INSERT 
+WITH CHECK (true);

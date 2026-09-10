@@ -28,16 +28,17 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        await supabase.from("contact_submissions").insert([
-          {
-            full_name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            subject: formData.subject,
-            message: formData.message,
-          },
-        ]);
+      const { error } = await supabase.from("contact_submissions").insert([
+        {
+          full_name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          subject: formData.subject,
+          message: formData.message,
+        },
+      ]);
+      if (error) {
+        console.error("Supabase contact submit error:", error);
       }
     } catch (err) {
       console.error("Supabase contact submit error:", err);

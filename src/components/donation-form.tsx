@@ -124,19 +124,20 @@ export function DonationForm() {
             }
 
             try {
-              if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-                await supabase.from("donations").insert([
-                  {
-                    full_name: formData.name,
-                    email: formData.email,
-                    mobile_number: formData.phone,
-                    amount: amountInRupees,
-                    seva_category: formData.sevaCategory || "General",
-                    payment_id: response.razorpay_payment_id,
-                    order_id: response.razorpay_order_id,
-                    status: "success",
-                  },
-                ]);
+              const { error: supaError } = await supabase.from("donations").insert([
+                {
+                  full_name: formData.name,
+                  email: formData.email,
+                  mobile_number: formData.phone,
+                  amount: amountInRupees,
+                  seva_category: formData.sevaCategory || "General",
+                  payment_id: response.razorpay_payment_id,
+                  order_id: response.razorpay_order_id,
+                  status: "success",
+                },
+              ]);
+              if (supaError) {
+                console.error("Supabase donation insert error:", supaError);
               }
             } catch (supaErr) {
               console.error("Supabase donation insert error:", supaErr);
