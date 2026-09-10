@@ -39,16 +39,18 @@ export default function ContactPage() {
       ]);
       if (error) {
         console.error("Supabase contact submit error:", error);
+        alert("Unable to submit message. Error: " + error.message);
+        return;
       }
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+      }, 5000);
     } catch (err) {
       console.error("Supabase contact submit error:", err);
+      alert("Unable to submit message. Please check your internet connection.");
     }
-
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-    }, 5000);
   };
 
   return (
