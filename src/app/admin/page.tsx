@@ -404,7 +404,7 @@ export default function AdminPage() {
             </Button>
 
             <Button
-              variant="destructive"
+              variant="default"
               size="sm"
               onClick={handleLogout}
               className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white"
@@ -734,9 +734,9 @@ export default function AdminPage() {
                         <td className="p-3.5 text-center whitespace-nowrap">
                           <Button
                             size="sm"
-                            variant={d.status === "refunded" ? "outline" : "destructive"}
+                            variant={d.status === "refunded" ? "outline" : "default"}
                             onClick={() => handleToggleRefund(d.id, d.status, d.amount)}
-                            className="text-xs py-1 px-2.5"
+                            className="text-xs py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white"
                           >
                             {d.status === "refunded" ? "Mark Success" : "Mark Refund"}
                           </Button>
@@ -815,7 +815,7 @@ export default function AdminPage() {
           <Card className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
             <div className="p-4 bg-gray-50 border-b border-gray-200">
               <h2 className="font-bold text-gray-800 text-lg">
-                Contact Messages ("Send Us a Message") ({contacts.length})
+                Contact Messages (&quot;Send Us a Message&quot;) ({contacts.length})
               </h2>
             </div>
             <div className="overflow-x-auto">
