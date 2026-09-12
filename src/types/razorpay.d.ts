@@ -11,6 +11,7 @@ export interface RazorpayOptions {
   name: string;
   description?: string;
   order_id: string;
+  notes?: Record<string, string>;
   prefill?: {
     name?: string;
     email?: string;

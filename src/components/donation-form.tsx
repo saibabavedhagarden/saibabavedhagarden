@@ -7,7 +7,6 @@ import { Shield, CheckCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/language-context";
 import { translations } from "@/lib/translations";
 import { loadRazorpayScript } from "@/lib/razorpay-client";
-import { supabase } from "@/lib/supabase";
 
 const donationAmounts = [500, 1000, 2500, 5000];
 
@@ -67,7 +66,13 @@ export function DonationForm() {
       const orderResponse = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amountInPaise }),
+        body: JSON.stringify({
+          amount: amountInPaise,
+          sevaCategory: formData.sevaCategory || "General Donation",
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        }),
       });
 
       const orderData = await orderResponse.json();
@@ -81,9 +86,7 @@ export function DonationForm() {
         throw new Error(t.paymentError);
       }
 
-      const description = formData.sevaCategory
-        ? `Donation - ${formData.sevaCategory}`
-        : "Temple Donation";
+      const description = `Donation - ${formData.sevaCategory || "General"} | ${formData.name} (${formData.email})`;
 
       let paymentCompleted = false;
 
@@ -94,6 +97,18 @@ export function DonationForm() {
         name: "SRI SHIRDI SAIBABA RELIGIOUS TRUST",
         description,
         order_id: orderData.order_id,
+        notes: {
+          "Payment Purpose": "Donation",
+          "Seva Category": formData.sevaCategory || "General Donation",
+          "Donor Name": formData.name,
+          "Donor Email": formData.email,
+          "Donor Phone": formData.phone,
+          purpose: "Donation",
+          seva_category: formData.sevaCategory || "General Donation",
+          donor_name: formData.name,
+          donor_email: formData.email,
+          donor_phone: formData.phone,
+        },
         prefill: {
           name: formData.name,
           email: formData.email,
@@ -112,6 +127,11 @@ export function DonationForm() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                donor_name: formData.name,
+                donor_email: formData.email,
+                donor_phone: formData.phone,
+                amount: amountInRupees,
+                seva_category: formData.sevaCategory || "General",
               }),
             });
 
@@ -119,26 +139,6 @@ export function DonationForm() {
 
             if (!verifyResponse.ok || !verifyData.success) {
               throw new Error(verifyData.error || t.paymentFailed);
-            }
-
-            try {
-              const { error: supaError } = await supabase.from("donations").insert([
-                {
-                  full_name: formData.name,
-                  email: formData.email,
-                  mobile_number: formData.phone,
-                  amount: amountInRupees,
-                  seva_category: formData.sevaCategory || "General",
-                  payment_id: response.razorpay_payment_id,
-                  order_id: response.razorpay_order_id,
-                  status: "success",
-                },
-              ]);
-              if (supaError) {
-                console.error("Supabase donation insert error:", supaError);
-              }
-            } catch (supaErr) {
-              console.error("Supabase donation insert error:", supaErr);
             }
 
             setPaymentStatus("success");

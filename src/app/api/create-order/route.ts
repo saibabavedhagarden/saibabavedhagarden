@@ -5,6 +5,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const amount = Number(body.amount);
+    const sevaCategory = body.sevaCategory || "General Donation";
+    const name = body.name || "";
+    const email = body.email || "";
+    const phone = body.phone || "";
 
     if (!Number.isFinite(amount) || amount < 100) {
       return NextResponse.json(
@@ -32,6 +36,18 @@ export async function POST(request: Request) {
       amount: Math.round(amount),
       currency: "INR",
       receipt: `donation_${Date.now()}`,
+      notes: {
+        "Payment Purpose": "Donation",
+        "Seva Category": sevaCategory,
+        "Donor Name": name,
+        "Donor Email": email,
+        "Donor Phone": phone,
+        purpose: "Donation",
+        seva_category: sevaCategory,
+        donor_name: name,
+        donor_email: email,
+        donor_phone: phone,
+      },
     });
 
     return NextResponse.json({
