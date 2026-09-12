@@ -56,13 +56,6 @@ export function DonationForm() {
       return;
     }
 
-    const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!razorpayKey) {
-      setPaymentStatus("error");
-      setErrorMessage(t.paymentError);
-      return;
-    }
-
     setPaymentStatus("loading");
 
     try {
@@ -81,6 +74,11 @@ export function DonationForm() {
 
       if (!orderResponse.ok) {
         throw new Error(orderData.error || t.paymentError);
+      }
+
+      const razorpayKey = orderData.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!razorpayKey) {
+        throw new Error(t.paymentError);
       }
 
       const description = formData.sevaCategory

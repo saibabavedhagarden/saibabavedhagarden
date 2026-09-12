@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
+      key_id: keyId,
     });
   } catch (error) {
     const statusCode =
