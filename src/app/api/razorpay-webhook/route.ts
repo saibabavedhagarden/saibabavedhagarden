@@ -61,6 +61,42 @@ export async function POST(request: Request) {
           console.log(`Razorpay Webhook: Refund recorded for payment ${paymentId}`);
         }
       }
+    } else if (event === "payment.captured" || event === "order.paid") {
+      const paymentEntity = payload.payload?.payment?.entity;
+      const paymentId = paymentEntity?.id;
+      const orderId = paymentEntity?.order_id;
+      const amount = paymentEntity?.amount ? paymentEntity.amount / 100 : 0;
+      const notes = paymentEntity?.notes || {};
+
+      if (paymentId) {
+        // Check if donation already exists
+        const { data: existing } = await supabase
+          .from("donations")
+          .select("id")
+          .eq("payment_id", paymentId)
+          .single();
+
+        if (!existing) {
+          const { error: insErr } = await supabase.from("donations").insert([
+            {
+              full_name: notes.donor_name || notes.full_name || "Valued Donor",
+              email: notes.donor_email || notes.email || paymentEntity?.email || "",
+              mobile_number: notes.donor_phone || notes.phone || paymentEntity?.contact || "",
+              amount,
+              seva_category: notes.seva_category || "General Donation",
+              payment_id: paymentId,
+              order_id: orderId || "",
+              status: "success",
+            },
+          ]);
+
+          if (insErr) {
+            console.error("Webhook payment capture insert error:", insErr);
+          } else {
+            console.log(`Razorpay Webhook: Payment captured & logged for payment ${paymentId}`);
+          }
+        }
+      }
     }
 
     return NextResponse.json({ status: "ok" });
