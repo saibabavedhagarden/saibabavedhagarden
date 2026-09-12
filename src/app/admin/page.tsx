@@ -174,7 +174,12 @@ export default function AdminPage() {
     setIsAuthenticated(false);
   };
 
-  const handleToggleRefund = async (id: number, currentStatus: string, amount: number) => {
+  const handleToggleRefund = async (
+    id: number | string,
+    currentStatus: string,
+    amount: number,
+    paymentId?: string
+  ) => {
     const isCurrentlyRefunded = currentStatus === "refunded";
     const newStatus = isCurrentlyRefunded ? "success" : "refunded";
     const refundAmt = isCurrentlyRefunded ? 0 : amount;
@@ -189,16 +194,25 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: newStatus, refund_amount: refundAmt }),
+        body: JSON.stringify({
+          id,
+          payment_id: paymentId,
+          status: newStatus,
+          refund_amount: refundAmt,
+        }),
       });
+
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         await checkAuthAndFetchData();
       } else {
-        alert("Failed to update donation status.");
+        alert(
+          `Failed to update donation status: ${data.error || res.statusText || "Unknown error"}`
+        );
       }
     } catch (err) {
-      alert("Error updating donation status.");
+      alert("Error updating donation status: Network error.");
     }
   };
 
@@ -812,7 +826,7 @@ export default function AdminPage() {
                           <Button
                             size="sm"
                             variant={d.status === "refunded" ? "outline" : "default"}
-                            onClick={() => handleToggleRefund(d.id, d.status, d.amount)}
+                            onClick={() => handleToggleRefund(d.id, d.status, d.amount, d.payment_id)}
                             className="text-xs py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white"
                           >
                             {d.status === "refunded" ? "Mark Success" : "Mark Refund"}

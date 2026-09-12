@@ -11,16 +11,23 @@ export async function POST(request: Request) {
 
     if (token !== "authenticated_saibaba_admin") {
       return NextResponse.json(
-        { error: "Unauthorized access" },
+        { error: "Session expired or unauthorized. Please log in to admin portal again." },
         { status: 401 }
       );
     }
 
-    const { id, status, refund_amount } = await request.json();
+    const { id, payment_id, status, refund_amount } = await request.json();
 
-    if (!id || !status) {
+    if (!id && !payment_id) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing donation identifier (id or payment_id)." },
+        { status: 400 }
+      );
+    }
+
+    if (!status) {
+      return NextResponse.json(
+        { error: "Missing status field." },
         { status: 400 }
       );
     }
@@ -39,23 +46,44 @@ export async function POST(request: Request) {
     if (status === "refunded") {
       updatePayload.refund_amount = Number(refund_amount) || 0;
       updatePayload.refunded_at = new Date().toISOString();
+    } else if (status === "success") {
+      updatePayload.refund_amount = 0;
+      updatePayload.refunded_at = null;
     }
 
-    const { error } = await supabase
-      .from("donations")
-      .update(updatePayload)
-      .eq("id", id);
+    // Build query with id or payment_id
+    let query = supabase.from("donations").update(updatePayload);
+    if (id) {
+      query = query.eq("id", id);
+    } else if (payment_id) {
+      query = query.eq("payment_id", payment_id);
+    }
+
+    let { error, data } = await query.select();
+
+    // Fallback: If extra columns (refund_amount/refunded_at) don't exist in DB schema yet, update status alone
+    if (error) {
+      console.warn("Primary update failed, retrying status update alone:", error.message);
+      let fallbackQuery = supabase.from("donations").update({ status });
+      if (id) {
+        fallbackQuery = fallbackQuery.eq("id", id);
+      } else if (payment_id) {
+        fallbackQuery = fallbackQuery.eq("payment_id", payment_id);
+      }
+      const fallbackResult = await fallbackQuery.select();
+      error = fallbackResult.error;
+      data = fallbackResult.data;
+    }
 
     if (error) {
-      console.error("Update donation status error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Update donation status final error:", error);
+      return NextResponse.json({ error: `Supabase Error: ${error.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, updated: data });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to update donation status" },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "Failed to update donation status";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
+
