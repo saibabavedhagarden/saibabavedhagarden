@@ -37,16 +37,11 @@ export async function POST(request: Request) {
       currency: "INR",
       receipt: `donation_${Date.now()}`,
       notes: {
-        "Payment Purpose": "Donation",
-        "Seva Category": sevaCategory,
         "Donor Name": name,
         "Donor Email": email,
         "Donor Phone": phone,
-        purpose: "Donation",
-        seva_category: sevaCategory,
-        donor_name: name,
-        donor_email: email,
-        donor_phone: phone,
+        "Seva Category": sevaCategory,
+        "Payment Purpose": "Donation",
       },
     });
 

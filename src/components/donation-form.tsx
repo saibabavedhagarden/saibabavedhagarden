@@ -98,16 +98,11 @@ export function DonationForm() {
         description,
         order_id: orderData.order_id,
         notes: {
-          "Payment Purpose": "Donation",
-          "Seva Category": formData.sevaCategory || "General Donation",
           "Donor Name": formData.name,
           "Donor Email": formData.email,
           "Donor Phone": formData.phone,
-          purpose: "Donation",
-          seva_category: formData.sevaCategory || "General Donation",
-          donor_name: formData.name,
-          donor_email: formData.email,
-          donor_phone: formData.phone,
+          "Seva Category": formData.sevaCategory || "General Donation",
+          "Payment Purpose": "Donation",
         },
         prefill: {
           name: formData.name,
