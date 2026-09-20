@@ -40,10 +40,24 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    if (event === "refund.processed" || event === "refund.created") {
+    if (
+      event === "refund.processed" ||
+      event === "refund.created" ||
+      event === "refund.speed_changed" ||
+      event === "payment.refunded" ||
+      event?.includes("refund")
+    ) {
       const refundEntity = payload.payload?.refund?.entity;
-      const paymentId = refundEntity?.payment_id;
-      const refundAmount = refundEntity?.amount ? refundEntity.amount / 100 : 0;
+      const paymentEntity = payload.payload?.payment?.entity;
+
+      const paymentId = refundEntity?.payment_id || paymentEntity?.id;
+      const refundAmount = refundEntity?.amount
+        ? refundEntity.amount / 100
+        : paymentEntity?.amount_refunded
+        ? paymentEntity.amount_refunded / 100
+        : paymentEntity?.amount
+        ? paymentEntity.amount / 100
+        : 0;
 
       if (paymentId) {
         const { error } = await supabase
@@ -58,7 +72,9 @@ export async function POST(request: Request) {
         if (error) {
           console.error("Webhook update refund error:", error);
         } else {
-          console.log(`Razorpay Webhook: Refund recorded for payment ${paymentId}`);
+          console.log(
+            `Razorpay Webhook: Refund recorded for payment ${paymentId} (Amount: ₹${refundAmount})`
+          );
         }
       }
     } else if (event === "payment.captured" || event === "order.paid") {
