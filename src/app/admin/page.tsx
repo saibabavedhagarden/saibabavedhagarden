@@ -723,17 +723,29 @@ export default function AdminPage() {
                     key={item.category}
                     className="p-5 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow rounded-xl"
                   >
-                    <h3 className="text-base font-bold text-gray-800 mb-2 truncate">
-                      {item.category}
-                    </h3>
-                    <div className="text-2xl font-extrabold text-amber-600 mb-2">
-                      ₹{item.net.toLocaleString()}
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-base font-bold text-gray-800 truncate">
+                        {item.category}
+                      </h3>
+                      <span className="text-xs text-gray-500 font-medium">
+                        {item.count} donation{item.count !== 1 ? "s" : ""}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-600 border-t border-gray-100 pt-2">
-                      <span>Donations: <strong>{item.count}</strong></span>
-                      {item.refunds > 0 && (
-                        <span className="text-red-600">
+                    <div className="text-2xl font-extrabold text-amber-600 mb-1">
+                      ₹{item.net.toLocaleString()}
+                      <span className="text-xs font-normal text-gray-500 ml-1.5">(Net)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2.5 mt-2">
+                      <span className="text-emerald-700 font-semibold">
+                        Gross: ₹{item.gross.toLocaleString()}
+                      </span>
+                      {item.refunds > 0 ? (
+                        <span className="text-red-600 font-semibold">
                           Refunded: ₹{item.refunds.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">
+                          Refunded: ₹0
                         </span>
                       )}
                     </div>
