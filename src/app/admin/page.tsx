@@ -170,6 +170,11 @@ export default function AdminPage() {
   };
 
   const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Supabase signOut error:", e);
+    }
     await fetch("/api/admin/logout", { method: "POST" });
     setIsAuthenticated(false);
   };
