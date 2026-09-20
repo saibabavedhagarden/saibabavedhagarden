@@ -276,26 +276,22 @@ export default function AdminPage() {
     let refunds = 0;
     let successfulCount = 0;
     let refundedCount = 0;
-    const uniqueDonors = new Set<string>();
 
     filteredDonations.forEach((d) => {
       const amt = Number(d.amount) || 0;
       const refAmt = Number(d.refund_amount) || (d.status === "refunded" ? amt : 0);
 
+      gross += amt;
+
       if (d.status === "refunded") {
         refunds += refAmt;
         refundedCount++;
       } else {
-        gross += amt;
         successfulCount++;
-      }
-
-      if (d.email || d.mobile_number) {
-        uniqueDonors.add((d.email || d.mobile_number).toLowerCase());
       }
     });
 
-    const net = gross - refunds;
+    const net = Math.max(0, gross - refunds);
 
     return {
       gross,
@@ -303,7 +299,6 @@ export default function AdminPage() {
       net,
       successfulCount,
       refundedCount,
-      uniqueDonorsCount: uniqueDonors.size,
     };
   }, [filteredDonations]);
 
@@ -320,13 +315,14 @@ export default function AdminPage() {
         map[cat] = { count: 0, gross: 0, refunds: 0, net: 0 };
       }
 
+      map[cat].gross += amt;
+
       if (d.status === "refunded") {
         map[cat].refunds += refAmt;
       } else {
         map[cat].count += 1;
-        map[cat].gross += amt;
       }
-      map[cat].net = map[cat].gross - map[cat].refunds;
+      map[cat].net = Math.max(0, map[cat].gross - map[cat].refunds);
     });
 
     return Object.entries(map).map(([category, stats]) => ({
@@ -662,7 +658,7 @@ export default function AdminPage() {
         {activeTab === "overview" && (
           <div className="space-y-8">
             {/* KPI Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               <Card className="p-5 bg-white border border-amber-200 shadow-sm rounded-xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -694,23 +690,6 @@ export default function AdminPage() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Total valid payment transactions
-                </p>
-              </Card>
-
-              <Card className="p-5 bg-white border border-purple-200 shadow-sm rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Unique Donors
-                  </span>
-                  <div className="p-2 bg-purple-100 text-purple-700 rounded-lg">
-                    <Users className="w-5 h-5" />
-                  </div>
-                </div>
-                <div className="text-3xl font-extrabold text-purple-700">
-                  {metrics.uniqueDonorsCount}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Unique emails & mobile numbers
                 </p>
               </Card>
 
