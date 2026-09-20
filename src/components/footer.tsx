@@ -174,6 +174,23 @@ export function Footer() {
           <p className="text-gray-600 text-sm mt-2">
             © {new Date().getFullYear()} Sai Baba Vedha Garden. {footerT.copyright}
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-600 mt-4">
+            <Link href="/terms-and-conditions" className="hover:text-divine-saffron underline transition-colors">
+              Terms & Conditions
+            </Link>
+            <span>•</span>
+            <Link href="/privacy-policy" className="hover:text-divine-saffron underline transition-colors">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link href="/refund-policy" className="hover:text-divine-saffron underline transition-colors">
+              Refund Policy
+            </Link>
+            <span>•</span>
+            <Link href="/cancellation-policy" className="hover:text-divine-saffron underline transition-colors">
+              Cancellation Policy
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
