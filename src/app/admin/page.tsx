@@ -679,7 +679,7 @@ export default function AdminPage() {
               <Card className="p-5 bg-white border border-emerald-200 shadow-sm rounded-xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Successful Donations
+                    Total Donation Count
                   </span>
                   <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
                     <CheckCircle2 className="w-5 h-5" />
@@ -689,7 +689,7 @@ export default function AdminPage() {
                   {metrics.successfulCount}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Total valid payment transactions
+                  Completed payment transactions
                 </p>
               </Card>
 
