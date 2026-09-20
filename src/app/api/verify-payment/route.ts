@@ -57,22 +57,46 @@ export async function POST(request: Request) {
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey);
       try {
-        const { error: supaError } = await supabase.from("donations").insert([
-          {
-            full_name: donor_name || "Anonymous",
-            email: donor_email || "",
-            mobile_number: donor_phone || "",
-            amount: Number(amount) || 0,
-            seva_category: seva_category || "General",
-            payment_id: razorpay_payment_id,
-            order_id: razorpay_order_id,
-            status: "success",
-          },
-        ]);
-        if (supaError) {
-          console.error("Supabase insert error on payment verification:", supaError);
+        // Check if webhook already logged this payment or order
+        let checkQuery = supabase.from("donations").select("id, full_name").limit(1);
+        if (razorpay_payment_id && razorpay_order_id) {
+          checkQuery = checkQuery.or(`payment_id.eq.${razorpay_payment_id},order_id.eq.${razorpay_order_id}`);
+        } else if (razorpay_payment_id) {
+          checkQuery = checkQuery.eq("payment_id", razorpay_payment_id);
+        }
+
+        const { data: existing } = await checkQuery;
+
+        if (!existing || existing.length === 0) {
+          const { error: supaError } = await supabase.from("donations").insert([
+            {
+              full_name: donor_name || "Anonymous",
+              email: donor_email || "",
+              mobile_number: donor_phone || "",
+              amount: Number(amount) || 0,
+              seva_category: seva_category || "General",
+              payment_id: razorpay_payment_id,
+              order_id: razorpay_order_id,
+              status: "success",
+            },
+          ]);
+          if (supaError) {
+            console.error("Supabase insert error on payment verification:", supaError);
+          } else {
+            console.log("Successfully logged payment in Supabase donations table.");
+          }
         } else {
-          console.log("Successfully logged payment in Supabase donations table.");
+          // Update the existing record with the user's typed name/phone if webhook set a generic name
+          await supabase
+            .from("donations")
+            .update({
+              full_name: donor_name || existing[0].full_name || "Anonymous",
+              email: donor_email || "",
+              mobile_number: donor_phone || "",
+              seva_category: seva_category || "General",
+            })
+            .eq("id", existing[0].id);
+          console.log("Updated existing donation entry on payment verification.");
         }
       } catch (err) {
         console.error("Supabase payment log error:", err);

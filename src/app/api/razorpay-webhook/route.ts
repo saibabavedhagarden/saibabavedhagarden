@@ -91,22 +91,50 @@ export async function POST(request: Request) {
       const amount = paymentEntity?.amount ? paymentEntity.amount / 100 : 0;
       const notes = paymentEntity?.notes || {};
 
-      if (paymentId) {
-        // Check if donation already exists
-        const { data: existing } = await supabase
-          .from("donations")
-          .select("id")
-          .eq("payment_id", paymentId)
-          .single();
+      const donorName =
+        notes["Donor Name"] ||
+        notes.donor_name ||
+        notes.full_name ||
+        "Valued Donor";
 
-        if (!existing) {
+      const donorEmail =
+        notes["Donor Email"] ||
+        notes.donor_email ||
+        notes.email ||
+        paymentEntity?.email ||
+        "";
+
+      const donorPhone =
+        notes["Donor Phone"] ||
+        notes.donor_phone ||
+        notes.phone ||
+        paymentEntity?.contact ||
+        "";
+
+      const sevaCat =
+        notes["Seva Category"] ||
+        notes.seva_category ||
+        "General Donation";
+
+      if (paymentId) {
+        // Check if donation already exists by payment_id or order_id
+        let checkQuery = supabase.from("donations").select("id, full_name").limit(1);
+        if (paymentId && orderId) {
+          checkQuery = checkQuery.or(`payment_id.eq.${paymentId},order_id.eq.${orderId}`);
+        } else {
+          checkQuery = checkQuery.eq("payment_id", paymentId);
+        }
+
+        const { data: existing } = await checkQuery;
+
+        if (!existing || existing.length === 0) {
           const { error: insErr } = await supabase.from("donations").insert([
             {
-              full_name: notes.donor_name || notes.full_name || "Valued Donor",
-              email: notes.donor_email || notes.email || paymentEntity?.email || "",
-              mobile_number: notes.donor_phone || notes.phone || paymentEntity?.contact || "",
+              full_name: donorName,
+              email: donorEmail,
+              mobile_number: donorPhone,
               amount,
-              seva_category: notes.seva_category || "General Donation",
+              seva_category: sevaCat,
               payment_id: paymentId,
               order_id: orderId || "",
               status: "success",
@@ -114,10 +142,26 @@ export async function POST(request: Request) {
           ]);
 
           if (insErr) {
-            console.error("Webhook payment capture insert error:", insErr);
+            if (!insErr.message?.includes("unique")) {
+              console.error("Webhook payment capture insert error:", insErr);
+            }
           } else {
             console.log(`Razorpay Webhook: Payment captured & logged for payment ${paymentId}`);
           }
+        } else {
+          // If existing record was logged with generic "Valued Donor", update it with notes data!
+          if (existing[0]?.full_name === "Valued Donor" && donorName !== "Valued Donor") {
+            await supabase
+              .from("donations")
+              .update({
+                full_name: donorName,
+                email: donorEmail,
+                mobile_number: donorPhone,
+                seva_category: sevaCat,
+              })
+              .eq("id", existing[0].id);
+          }
+          console.log(`Razorpay Webhook: Payment ${paymentId} already logged, skipping duplicate.`);
         }
       }
     }

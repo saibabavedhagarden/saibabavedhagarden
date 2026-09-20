@@ -51,12 +51,12 @@ export async function POST(request: Request) {
       updatePayload.refunded_at = null;
     }
 
-    // Build query prioritizing payment_id then id
+    // Build query prioritizing specific database row id over payment_id
     let query = supabase.from("donations").update(updatePayload);
-    if (payment_id) {
-      query = query.eq("payment_id", payment_id);
-    } else if (id) {
+    if (id) {
       query = query.eq("id", id);
+    } else if (payment_id) {
+      query = query.eq("payment_id", payment_id);
     }
 
     let { error, data } = await query.select();
@@ -65,10 +65,10 @@ export async function POST(request: Request) {
     if (error) {
       console.warn("Primary update failed, retrying status update alone:", error.message);
       let fallbackQuery = supabase.from("donations").update({ status });
-      if (payment_id) {
-        fallbackQuery = fallbackQuery.eq("payment_id", payment_id);
-      } else if (id) {
+      if (id) {
         fallbackQuery = fallbackQuery.eq("id", id);
+      } else if (payment_id) {
+        fallbackQuery = fallbackQuery.eq("payment_id", payment_id);
       }
       const fallbackResult = await fallbackQuery.select();
       error = fallbackResult.error;
