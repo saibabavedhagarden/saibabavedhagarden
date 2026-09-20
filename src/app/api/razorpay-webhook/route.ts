@@ -47,6 +47,8 @@ export async function POST(request: Request) {
       event === "payment.refunded" ||
       event?.includes("refund")
     ) {
+      const refundEntity = payload.payload?.refund?.entity;
+      const paymentEntity = payload.payload?.payment?.entity;
       const orderId = refundEntity?.order_id || paymentEntity?.order_id;
       const paymentId = refundEntity?.payment_id || paymentEntity?.id;
       const refundAmount = refundEntity?.amount
