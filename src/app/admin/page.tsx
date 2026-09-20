@@ -672,7 +672,7 @@ export default function AdminPage() {
                   ₹{metrics.net.toLocaleString()}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Gross: ₹{metrics.gross.toLocaleString()} - Refunds: ₹{metrics.refunds.toLocaleString()}
+                  Collected: ₹{metrics.gross.toLocaleString()} - Refunds: ₹{metrics.refunds.toLocaleString()}
                 </p>
               </Card>
 
@@ -737,7 +737,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-2.5 mt-2">
                       <span className="text-emerald-700 font-semibold">
-                        Gross: ₹{item.gross.toLocaleString()}
+                        Collected: ₹{item.gross.toLocaleString()}
                       </span>
                       {item.refunds > 0 ? (
                         <span className="text-red-600 font-semibold">
