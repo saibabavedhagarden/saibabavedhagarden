@@ -76,13 +76,29 @@ export async function POST(request: Request) {
           query = query.eq("order_id", orderId);
         }
 
-        const { error, count } = await query;
+        let { error, count } = await query;
+
+        // Fallback: If refund_amount column is missing in DB schema, update status alone
+        if (error) {
+          console.warn("Primary refund update failed, retrying status update alone:", error.message);
+          let fallbackQuery = supabase.from("donations").update({ status: "refunded" });
+          if (paymentId && orderId) {
+            fallbackQuery = fallbackQuery.or(`payment_id.eq.${paymentId},order_id.eq.${orderId}`);
+          } else if (paymentId) {
+            fallbackQuery = fallbackQuery.eq("payment_id", paymentId);
+          } else if (orderId) {
+            fallbackQuery = fallbackQuery.eq("order_id", orderId);
+          }
+          const fallbackRes = await fallbackQuery;
+          error = fallbackRes.error;
+          count = fallbackRes.count;
+        }
 
         if (error) {
           console.error("Webhook update refund error:", error);
         } else {
           console.log(
-            `Razorpay Webhook: Refund recorded for payment ${paymentId || orderId} (Amount: ₹${refundAmount}, Updated rows: ${count})`
+            `Razorpay Webhook: Refund recorded for payment ${paymentId || orderId} (Amount: ₹${refundAmount})`
           );
         }
       }
