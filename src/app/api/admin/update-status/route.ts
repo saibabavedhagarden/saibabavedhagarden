@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { id, payment_id, status, refund_amount } = await request.json();
+    const { id, payment_id, status, refund_amount, seva_category, remarks } = await request.json();
 
     if (!id && !payment_id) {
       return NextResponse.json(
@@ -25,9 +25,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!status) {
+    if (!status && !seva_category && remarks === undefined) {
       return NextResponse.json(
-        { error: "Missing status field." },
+        { error: "Missing update fields (status, seva_category, or remarks)." },
         { status: 400 }
       );
     }
@@ -42,13 +42,25 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const updatePayload: Record<string, unknown> = { status };
-    if (status === "refunded") {
-      updatePayload.refund_amount = Number(refund_amount) || 0;
-      updatePayload.refunded_at = new Date().toISOString();
-    } else if (status === "success") {
-      updatePayload.refund_amount = 0;
-      updatePayload.refunded_at = null;
+    const updatePayload: Record<string, unknown> = {};
+
+    if (status) {
+      updatePayload.status = status;
+      if (status === "refunded") {
+        updatePayload.refund_amount = Number(refund_amount) || 0;
+        updatePayload.refunded_at = new Date().toISOString();
+      } else if (status === "success") {
+        updatePayload.refund_amount = 0;
+        updatePayload.refunded_at = null;
+      }
+    }
+
+    if (seva_category) {
+      updatePayload.seva_category = seva_category;
+    }
+
+    if (remarks !== undefined) {
+      updatePayload.remarks = remarks;
     }
 
     // Build query prioritizing specific database row id over payment_id
@@ -61,26 +73,59 @@ export async function POST(request: Request) {
 
     let { error, data } = await query.select();
 
-    // Fallback: If extra columns (refund_amount/refunded_at) don't exist in DB schema yet, update status alone
-    if (error) {
-      console.warn("Primary update failed, retrying status update alone:", error.message);
-      let fallbackQuery = supabase.from("donations").update({ status });
-      if (id) {
-        fallbackQuery = fallbackQuery.eq("id", id);
-      } else if (payment_id) {
-        fallbackQuery = fallbackQuery.eq("payment_id", payment_id);
+    // Fallback 1: If 'remarks' column does not exist yet in DB schema, retry without 'remarks'
+    let remarksSavedToDb = true;
+    if (error && error.message && error.message.includes("remarks")) {
+      console.warn("Remarks column does not exist in DB yet, updating remaining fields:", error.message);
+      remarksSavedToDb = false;
+      const fallbackPayload = { ...updatePayload };
+      delete fallbackPayload.remarks;
+
+      if (Object.keys(fallbackPayload).length > 0) {
+        let fallbackQuery = supabase.from("donations").update(fallbackPayload);
+        if (id) {
+          fallbackQuery = fallbackQuery.eq("id", id);
+        } else if (payment_id) {
+          fallbackQuery = fallbackQuery.eq("payment_id", payment_id);
+        }
+        const fallbackResult = await fallbackQuery.select();
+        error = fallbackResult.error;
+        data = fallbackResult.data;
+      } else {
+        // Only remarks was passed and column doesn't exist
+        error = null;
+        data = [];
       }
-      const fallbackResult = await fallbackQuery.select();
-      error = fallbackResult.error;
-      data = fallbackResult.data;
+    }
+
+    // Fallback 2: If refund_amount or other extra columns don't exist in DB schema yet
+    if (error && (error.message.includes("refund_amount") || error.message.includes("refunded_at"))) {
+      console.warn("Extra refund columns failed, retrying minimal update:", error.message);
+      const minimalPayload: Record<string, unknown> = {};
+      if (status) minimalPayload.status = status;
+      if (seva_category) minimalPayload.seva_category = seva_category;
+
+      let minimalQuery = supabase.from("donations").update(minimalPayload);
+      if (id) {
+        minimalQuery = minimalQuery.eq("id", id);
+      } else if (payment_id) {
+        minimalQuery = minimalQuery.eq("payment_id", payment_id);
+      }
+      const minimalResult = await minimalQuery.select();
+      error = minimalResult.error;
+      data = minimalResult.data;
     }
 
     if (error) {
-      console.error("Update donation status final error:", error);
+      console.error("Update donation final error:", error);
       return NextResponse.json({ error: `Supabase Error: ${error.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, updated: data });
+    return NextResponse.json({
+      success: true,
+      updated: data,
+      remarksSavedToDb,
+    });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to update donation status";
     return NextResponse.json({ error: msg }, { status: 500 });

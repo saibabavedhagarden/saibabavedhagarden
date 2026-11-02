@@ -19,6 +19,8 @@ import {
   TrendingUp,
   CheckCircle2,
   AlertCircle,
+  Edit3,
+  X,
 } from "lucide-react";
 
 interface DonationRecord {
@@ -34,6 +36,7 @@ interface DonationRecord {
   status: string;
   refund_amount?: number;
   refunded_at?: string;
+  remarks?: string;
 }
 
 interface ContactRecord {
@@ -76,6 +79,14 @@ export default function AdminPage() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
 
+  // Remarks & Category Edit Modal State
+  const [remarkModalOpen, setRemarkModalOpen] = useState(false);
+  const [editingDonation, setEditingDonation] = useState<DonationRecord | null>(null);
+  const [remarkInput, setRemarkInput] = useState("");
+  const [modalCategory, setModalCategory] = useState("");
+  const [isSavingRemark, setIsSavingRemark] = useState(false);
+  const [updatingId, setUpdatingId] = useState<number | string | null>(null);
+
   const checkAuthAndFetchData = async () => {
     setIsLoadingData(true);
     try {
@@ -83,7 +94,18 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         setIsAuthenticated(true);
-        setDonations(data.donations || []);
+        const rawDonations: DonationRecord[] = data.donations || [];
+        const enrichedDonations = rawDonations.map((d) => {
+          const localRemark =
+            typeof window !== "undefined"
+              ? localStorage.getItem(`donation_remark_${d.id}`)
+              : null;
+          return {
+            ...d,
+            remarks: d.remarks || localRemark || "",
+          };
+        });
+        setDonations(enrichedDonations);
         setContacts(data.contacts || []);
         setLoyalDonors(data.loyalDonors || []);
       } else {
@@ -221,6 +243,81 @@ export default function AdminPage() {
     }
   };
 
+  const handleOpenRemarkModal = (donation: DonationRecord) => {
+    setEditingDonation(donation);
+    setRemarkInput(donation.remarks || "");
+    setModalCategory(donation.seva_category || "General Donation");
+    setRemarkModalOpen(true);
+  };
+
+  const handleSaveRemarkModal = async () => {
+    if (!editingDonation) return;
+    setIsSavingRemark(true);
+    try {
+      const res = await fetch("/api/admin/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingDonation.id,
+          payment_id: editingDonation.payment_id,
+          remarks: remarkInput,
+          seva_category: modalCategory,
+        }),
+      });
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`donation_remark_${editingDonation.id}`, remarkInput);
+      }
+
+      setDonations((prev) =>
+        prev.map((d) =>
+          d.id === editingDonation.id
+            ? { ...d, remarks: remarkInput, seva_category: modalCategory }
+            : d
+        )
+      );
+
+      setRemarkModalOpen(false);
+      setEditingDonation(null);
+    } catch (err) {
+      alert("Error saving remark.");
+    } finally {
+      setIsSavingRemark(false);
+    }
+  };
+
+  const handleCategoryChange = async (
+    id: number | string,
+    newCategory: string,
+    paymentId?: string
+  ) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch("/api/admin/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          payment_id: paymentId,
+          seva_category: newCategory,
+        }),
+      });
+
+      if (res.ok) {
+        setDonations((prev) =>
+          prev.map((d) => (d.id === id ? { ...d, seva_category: newCategory } : d))
+        );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to update category: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      alert("Network error updating category.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   // List of available years & categories for dropdowns
   const availableYears = useMemo(() => {
     const years = new Set<string>();
@@ -234,7 +331,7 @@ export default function AdminPage() {
 
   const sevaCategoryList = [
     "General Donation",
-    "Annadhanaman",
+    "Annadhanam",
     "Festival Support",
     "Pooja Services",
     "Temple Development",
@@ -350,6 +447,7 @@ export default function AdminPage() {
       "Refund Amount (₹)",
       "Payment ID",
       "Order ID",
+      "Remarks",
     ];
 
     const rows = filteredDonations.map((d) => [
@@ -364,6 +462,7 @@ export default function AdminPage() {
       d.refund_amount || 0,
       `"${(d.payment_id || "").replace(/"/g, '""')}"`,
       `"${(d.order_id || "").replace(/"/g, '""')}"`,
+      `"${(d.remarks || "").replace(/"/g, '""')}"`,
     ]);
 
     const csvContent =
@@ -775,7 +874,7 @@ export default function AdminPage() {
                     <th className="p-3.5">Contact Details</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5">Payment ID</th>
-                    <th className="p-3.5 text-center">Action</th>
+                    <th className="p-3.5 text-center">Action (Category & Remarks)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -819,14 +918,42 @@ export default function AdminPage() {
                           {d.payment_id || "-"}
                         </td>
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <Button
-                            size="sm"
-                            variant={d.status === "refunded" ? "outline" : "default"}
-                            onClick={() => handleToggleRefund(d.id, d.status, d.amount, d.payment_id)}
-                            className="text-xs py-1 px-2.5 bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            {d.status === "refunded" ? "Mark Success" : "Mark Refund"}
-                          </Button>
+                          <div className="flex items-center gap-2 justify-center">
+                            {/* Change Seva Category Action */}
+                            <select
+                              value={d.seva_category || "General Donation"}
+                              onChange={(e) =>
+                                handleCategoryChange(d.id, e.target.value, d.payment_id)
+                              }
+                              disabled={updatingId === d.id}
+                              className="text-xs border border-amber-300 bg-amber-50/80 hover:bg-white text-amber-900 rounded-md px-2.5 py-1.5 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                              title="Change Seva Category"
+                            >
+                              {sevaCategoryList.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {cat}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Remark Section */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenRemarkModal(d)}
+                              className={`text-xs px-2.5 py-1.5 rounded-md border font-medium flex items-center gap-1.5 transition-all shadow-sm ${
+                                d.remarks
+                                  ? "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200"
+                                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                              }`}
+                              title={d.remarks ? `Remark: ${d.remarks}` : "Add Remark"}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                              <span className="max-w-[120px] truncate">
+                                {d.remarks ? d.remarks : "+ Remark"}
+                              </span>
+                              <Edit3 className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -949,6 +1076,141 @@ export default function AdminPage() {
               </table>
             </div>
           </Card>
+        )}
+
+        {/* REMARK & CATEGORY MODAL */}
+        {remarkModalOpen && editingDonation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+              <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white p-4.5 px-5 py-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-amber-200" />
+                  <h3 className="font-bold text-lg">Donation Details & Remarks</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setRemarkModalOpen(false);
+                    setEditingDonation(null);
+                  }}
+                  className="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Donor Summary Info */}
+                <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 text-xs text-gray-700 grid grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="text-gray-500 block">Donor Name:</span>
+                    <span className="font-bold text-gray-900 text-sm">
+                      {editingDonation.full_name || "Anonymous"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Amount:</span>
+                    <span className="font-bold text-emerald-700 text-sm">
+                      ₹{(Number(editingDonation.amount) || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Payment ID:</span>
+                    <span className="font-mono text-gray-800">
+                      {editingDonation.payment_id || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Status:</span>
+                    <span
+                      className={`font-bold ${
+                        editingDonation.status === "refunded"
+                          ? "text-red-600"
+                          : "text-emerald-700"
+                      }`}
+                    >
+                      {editingDonation.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Change Category in Modal */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Seva Category:
+                  </label>
+                  <select
+                    value={modalCategory}
+                    onChange={(e) => setModalCategory(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  >
+                    {sevaCategoryList.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Remarks Textarea */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Remark / Internal Notes:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={remarkInput}
+                    onChange={(e) => setRemarkInput(e.target.value)}
+                    placeholder="e.g. Special archana requested on donor's birthday, 80G receipt dispatched, cheque verified..."
+                    className="w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder:text-gray-400"
+                  />
+                </div>
+
+                {/* Status Action: Refund/Success toggle option */}
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                  <span>Payment Status:</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleToggleRefund(
+                        editingDonation.id,
+                        editingDonation.status,
+                        editingDonation.amount,
+                        editingDonation.payment_id
+                      );
+                      setRemarkModalOpen(false);
+                      setEditingDonation(null);
+                    }}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
+                  >
+                    {editingDonation.status === "refunded"
+                      ? "Revert to Success"
+                      : "Mark as Refunded"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRemarkModalOpen(false);
+                    setEditingDonation(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveRemarkModal}
+                  disabled={isSavingRemark}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {isSavingRemark ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
