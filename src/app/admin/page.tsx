@@ -874,7 +874,7 @@ export default function AdminPage() {
                     <th className="p-3.5">Contact Details</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5">Payment ID</th>
-                    <th className="p-3.5 text-center">Action (Category & Remarks)</th>
+                    <th className="p-3.5 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -918,42 +918,26 @@ export default function AdminPage() {
                           {d.payment_id || "-"}
                         </td>
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <div className="flex items-center gap-2 justify-center">
-                            {/* Change Seva Category Action */}
-                            <select
-                              value={d.seva_category || "General Donation"}
-                              onChange={(e) =>
-                                handleCategoryChange(d.id, e.target.value, d.payment_id)
-                              }
-                              disabled={updatingId === d.id}
-                              className="text-xs border border-amber-300 bg-amber-50/80 hover:bg-white text-amber-900 rounded-md px-2.5 py-1.5 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none transition-colors cursor-pointer shadow-sm disabled:opacity-50"
-                              title="Change Seva Category"
-                            >
-                              {sevaCategoryList.map((cat) => (
-                                <option key={cat} value={cat}>
-                                  {cat}
-                                </option>
-                              ))}
-                            </select>
-
-                            {/* Remark Section */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenRemarkModal(d)}
-                              className={`text-xs px-2.5 py-1.5 rounded-md border font-medium flex items-center gap-1.5 transition-all shadow-sm ${
-                                d.remarks
-                                  ? "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200"
-                                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                              }`}
-                              title={d.remarks ? `Remark: ${d.remarks}` : "Add Remark"}
-                            >
-                              <MessageSquare className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
-                              <span className="max-w-[120px] truncate">
-                                {d.remarks ? d.remarks : "+ Remark"}
-                              </span>
-                              <Edit3 className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRemarkModal(d)}
+                            className={`text-xs px-3 py-1.5 rounded-lg border font-medium inline-flex items-center gap-1.5 transition-all shadow-sm ${
+                              d.remarks
+                                ? "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200"
+                                : "bg-white text-gray-700 border-gray-300 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800"
+                            }`}
+                            title={
+                              d.remarks
+                                ? `Remark: ${d.remarks} (Click to edit)`
+                                : "Add Remark or Change Category"
+                            }
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                            <span className="max-w-[150px] truncate">
+                              {d.remarks ? d.remarks : "+ Remark"}
+                            </span>
+                            <Edit3 className="w-3 h-3 text-gray-400 flex-shrink-0 ml-0.5" />
+                          </button>
                         </td>
                       </tr>
                     ))
